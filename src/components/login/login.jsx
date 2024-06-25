@@ -66,7 +66,7 @@ const Login = () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast.success("oke")
-    } catch (error) {
+    } catch (err) {
       console.log(err);
       toast.error(err.message);
     } finally {
