@@ -1,34 +1,39 @@
 import {
+  arrayUnion,
   collection,
+  doc,
   getDoc,
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import "./addUser.css";
 import { db } from "../../../../lib/firebase";
-import { get, set } from "firebase/database";
+import { get, set, update } from "firebase/database";
 import { useState } from "react";
 import { create } from "zustand";
+import { useUserStore } from "../../../../lib/userStore";
 
 const AddUser = () => {
   const [user, setUser] = useState(null);
+  const { currentUser } = useUserStore();
   const handleSearch = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const usrename = formData.get("username");
+    const username = formData.get("username");
 
     try {
       const userRef = collection(db, "users");
 
-      // Create a query against the collection.
-      const q = query(userRef, where("username", "==", usrename));
+      const q = query(userRef, where("username", "==", username));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         setUser(querySnapshot.docs[0].data());
       }
-    } catch (error) {
+    } catch (err) {
       console.log(err);
     }
   };
@@ -38,11 +43,28 @@ const AddUser = () => {
     const usersChatRef = collection(db, "userchats");
     try {
       const newChatRef = doc(chatRef);
-      await setDoc(chatRef, {
+      await setDoc(newChatRef, {
         createAt: serverTimestamp(),
         messages: [],
       });
-      console.log(newChatRef.id);
+
+      await updateDoc(doc(usersChatRef, user.id), {
+        chats: arrayUnion({
+          chatId: newChatRef.id,
+          lastMeesage: "",
+          receiverId: currentUser.id,
+          updateAt: Date.now(),
+        }),
+      });
+
+      await updateDoc(doc(usersChatRef, currentUser.id), {
+        chats: arrayUnion({
+          chatId: newChatRef.id,
+          lastMeesage: "",
+          receiverId: user.id,
+          updateAt: Date.now(),
+        }),
+      });
     } catch (err) {
       console.log(err);
     }

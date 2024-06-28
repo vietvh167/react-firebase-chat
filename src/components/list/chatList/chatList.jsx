@@ -4,18 +4,20 @@ import AddUser from "./addUser/addUser";
 import { useUserStore } from "../../../lib/userStore";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
+import { useChatStore } from "../../../lib/chatStore";
 
 const ChatList = () => {
   const [chats, setChats] = useState([]);
   const [addMode, setAddMode] = useState(false);
 
   const { currentUser } = useUserStore();
+  const { chatId, changeChat } = useChatStore();
 
   useEffect(() => {
     const unSub = onSnapshot(
       doc(db, "userchats", currentUser.id),
       async (res) => {
-        const items = res.data().chats;
+        const items = res.data()?.chats ||[];
         const promises = items.map(async (item) => {
           const userDocRef = doc(db, "users", item.receiverId);
           const userDocSnap = await getDoc(userDocRef);
@@ -26,7 +28,9 @@ const ChatList = () => {
 
         const chatData = await Promise.all(promises);
 
-        setChats(chatData.sort((a, b) => b.updateAt - a.updateAt));
+        chatData.sort((a, b) => b.updateAt - a.updateAt); // Assuming updateAt is a valid timestamp or date for comparison
+
+        setChats(chatData);
       }
     );
 
@@ -34,6 +38,10 @@ const ChatList = () => {
       unSub();
     };
   }, [currentUser.id]);
+
+  const handleSelect = async (chat) => {
+    changeChat(chat.chatId, chat.user);
+  };
 
   return (
     <div className="chatList">
@@ -50,11 +58,16 @@ const ChatList = () => {
         />
       </div>
       {chats.map((chat) => (
-        <div className="item" key={chat.chatId}>
-          <img src="./avatar.png" alt="" />
+        <div
+          className="item"
+          key={chat.chatId}
+          onClick={() => handleSelect(chat)}
+          style={{ backgroundColor: chat?.isSeen ? "transparent" : "#5183fe" }}
+        >
+          <img src={chat.user.avatar || "./avatar.png"} alt="" />
           <div className="texts">
-            <span>Jane Doe</span>
-            <p>Hello</p>
+            <span>{chat.user.username}</span>
+            <p>{chat.lastMessage}</p>
           </div>
         </div>
       ))}
